@@ -16,9 +16,10 @@ export function CalculatorV2() {
   const [state, setState] = useState<CalculatorState>({
     market: 'NJ',
     tier: 1, // 1500-2000
-    selectedServices: new Set(['bronze', 'floorPlan']), // Default to Silver
+    selectedServices: new Set(), // Default to empty
     quantities: {},
   });
+  const [viewMode, setViewMode] = useState<'packages' | 'custom'>('custom');
   const [showClearTooltip, setShowClearTooltip] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -89,9 +90,20 @@ export function CalculatorV2() {
     let newServices = new Set<string>();
 
     switch (pkg) {
+      case 'Bronze':
+        newServices.add('bronze');
+        newServices.add('listingWebsite');
+        break;
       case 'Essential':
         newServices.add('bronze');
         newServices.add('floorPlan');
+        newServices.add('listingWebsite');
+        break;
+      case 'Gold':
+        newServices.add('bronze');
+        newServices.add('floorPlan');
+        newServices.add('threeDTour');
+        newServices.add('dronePhotoAddon');
         newServices.add('listingWebsite');
         break;
       case 'Signature':
@@ -120,6 +132,7 @@ export function CalculatorV2() {
       selectedServices: newServices,
       quantities: {}
     }));
+    setViewMode('custom');
   };
 
   return (
@@ -141,13 +154,13 @@ export function CalculatorV2() {
       {/* Top Bar Controls */}
       <div className="flex flex-col items-center justify-center gap-6 mb-12">
         {/* Market Toggle */}
-        <div className="bg-[#111] p-1 rounded-full border border-[#222] flex">
+        <div className="bg-[#111] p-1 rounded-full border border-[#222] flex w-full md:w-auto overflow-x-auto no-scrollbar">
           {(['NJ', 'Manhattan'] as Market[]).map(m => (
             <button
               key={m}
               onClick={() => setMarket(m)}
               className={cn(
-                "px-6 py-2 rounded-full text-sm font-bold transition-all",
+                "flex-1 md:flex-none px-4 md:px-6 py-2 rounded-full text-xs md:text-sm font-bold transition-all whitespace-nowrap",
                 state.market === m
                   ? "bg-[#c9a84c] text-black shadow-[0_0_15px_rgba(201,168,76,0.3)]"
                   : "text-[#999] hover:text-white"
@@ -174,6 +187,32 @@ export function CalculatorV2() {
               {t.label}
             </button>
           ))}
+        </div>
+
+        {/* View Mode Toggle */}
+        <div className="bg-[#111] p-1 rounded-full border border-[#222] flex mt-4 w-full md:w-auto overflow-x-auto no-scrollbar">
+          <button
+            onClick={() => setViewMode('packages')}
+            className={cn(
+              "flex-1 md:flex-none px-4 md:px-6 py-2 rounded-full text-xs md:text-sm font-bold transition-all whitespace-nowrap",
+              viewMode === 'packages'
+                ? "bg-[#c9a84c] text-black shadow-[0_0_15px_rgba(201,168,76,0.3)]"
+                : "text-[#999] hover:text-white"
+            )}
+          >
+            Package Presets
+          </button>
+          <button
+            onClick={() => setViewMode('custom')}
+            className={cn(
+              "flex-1 md:flex-none px-4 md:px-6 py-2 rounded-full text-xs md:text-sm font-bold transition-all whitespace-nowrap",
+              viewMode === 'custom'
+                ? "bg-[#c9a84c] text-black shadow-[0_0_15px_rgba(201,168,76,0.3)]"
+                : "text-[#999] hover:text-white"
+            )}
+          >
+            Build Your Own
+          </button>
         </div>
       </div>
 
@@ -212,87 +251,91 @@ export function CalculatorV2() {
             {/* Left Column: Services */}
             <div className="w-full lg:w-[60%] space-y-10">
               
-              <PackageCards market={state.market} tier={state.tier} onSelect={selectPackage} />
+              {viewMode === 'packages' ? (
+                <PackageCards market={state.market} tier={state.tier} onSelect={selectPackage} />
+              ) : (
+                <>
+                  {/* Photos Section */}
+                  <section>
+                    <div className="mb-6">
+                      <h2 className="text-[28px] font-bold text-white mb-2">Build Your Own</h2>
+                      <p className="text-[15px] text-[#999]">Customize your order by selecting individual services. Your discount adjusts automatically.</p>
+                    </div>
+                    <div className="mb-6">
+                      <h3 className="text-[20px] font-bold text-white mb-2">Photography</h3>
+                    </div>
+                    <div className="space-y-4">
+                      {SERVICES_LIST.filter(s => {
+                        if (s.category !== 'photo') return false;
+                        if (s.manhattanOnly && state.market !== 'Manhattan') return false;
+                        
+                        const hasBronze = state.selectedServices.has('bronze');
+                        if (s.id === 'dronePhotoAddon' && !hasBronze) return false;
+                        if (s.id === 'droneStandalone' && hasBronze) return false;
+                        
+                        return true;
+                      }).map(service => (
+                        <ServiceCard
+                          key={service.id}
+                          service={service}
+                          state={state}
+                          toggle={toggleService}
+                          updateQuantity={updateQuantity}
+                        />
+                      ))}
+                    </div>
+                  </section>
 
-              {/* Photos Section */}
-              <section>
-                <div className="mb-6">
-                  <h2 className="text-[28px] font-bold text-white mb-2">Customize Your Order</h2>
-                  <p className="text-[15px] text-[#999]">Add or remove individual services. Your discount adjusts automatically.</p>
-                </div>
-                <div className="mb-6">
-                  <h3 className="text-[20px] font-bold text-white mb-2">Photography</h3>
-                </div>
-                <div className="space-y-4">
-                  {SERVICES_LIST.filter(s => {
-                    if (s.category !== 'photo') return false;
-                    if (s.manhattanOnly && state.market !== 'Manhattan') return false;
-                    
-                    const hasBronze = state.selectedServices.has('bronze');
-                    if (s.id === 'dronePhotoAddon' && !hasBronze) return false;
-                    if (s.id === 'droneStandalone' && hasBronze) return false;
-                    
-                    return true;
-                  }).map(service => (
-                    <ServiceCard
-                      key={service.id}
-                      service={service}
-                      state={state}
-                      toggle={toggleService}
-                      updateQuantity={updateQuantity}
-                    />
-                  ))}
-                </div>
-              </section>
+                  {/* Videos Section */}
+                  <section>
+                    <div className="mb-6">
+                      <h2 className="text-[28px] font-bold text-white mb-2">Videos</h2>
+                      <p className="text-[15px] text-[#999]">Add a video to your package</p>
+                    </div>
+                    <div className="space-y-4">
+                      {SERVICES_LIST.filter(s => s.category === 'video' && (!s.manhattanOnly || state.market === 'Manhattan')).map(service => (
+                        <ServiceCard
+                          key={service.id}
+                          service={service}
+                          state={state}
+                          toggle={toggleService}
+                          updateQuantity={updateQuantity}
+                        />
+                      ))}
+                    </div>
+                  </section>
 
-              {/* Videos Section */}
-              <section>
-                <div className="mb-6">
-                  <h2 className="text-[28px] font-bold text-white mb-2">Videos</h2>
-                  <p className="text-[15px] text-[#999]">Add a video to your package</p>
-                </div>
-                <div className="space-y-4">
-                  {SERVICES_LIST.filter(s => s.category === 'video' && (!s.manhattanOnly || state.market === 'Manhattan')).map(service => (
-                    <ServiceCard
-                      key={service.id}
-                      service={service}
-                      state={state}
-                      toggle={toggleService}
-                      updateQuantity={updateQuantity}
-                    />
-                  ))}
-                </div>
-              </section>
-
-              {/* Add-Ons Section */}
-              <section>
-                <div className="mb-6">
-                  <h2 className="text-[28px] font-bold text-white mb-2">Add-Ons</h2>
-                  <p className="text-[15px] text-[#999]">Enhance your package</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {SERVICES_LIST.filter(s => {
-                    if (s.category !== 'addon') return false;
-                    if (s.id === 'nextDayVideoDelivery') {
-                      const hasVideo = state.selectedServices.has('standard') || 
-                                       state.selectedServices.has('cinematic') || 
-                                       state.selectedServices.has('agentBranding') || 
-                                       state.selectedServices.has('communitySpotlight');
-                      if (!hasVideo) return false;
-                    }
-                    return true;
-                  }).map(service => (
-                    <ServiceCard
-                      key={service.id}
-                      service={service}
-                      state={state}
-                      toggle={toggleService}
-                      updateQuantity={updateQuantity}
-                      compact
-                    />
-                  ))}
-                </div>
-              </section>
+                  {/* Add-Ons Section */}
+                  <section>
+                    <div className="mb-6">
+                      <h2 className="text-[28px] font-bold text-white mb-2">Add-Ons</h2>
+                      <p className="text-[15px] text-[#999]">Enhance your package</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {SERVICES_LIST.filter(s => {
+                        if (s.category !== 'addon') return false;
+                        if (s.id === 'nextDayVideoDelivery') {
+                          const hasVideo = state.selectedServices.has('standard') || 
+                                           state.selectedServices.has('cinematic') || 
+                                           state.selectedServices.has('agentBranding') || 
+                                           state.selectedServices.has('communitySpotlight');
+                          if (!hasVideo) return false;
+                        }
+                        return true;
+                      }).map(service => (
+                        <ServiceCard
+                          key={service.id}
+                          service={service}
+                          state={state}
+                          toggle={toggleService}
+                          updateQuantity={updateQuantity}
+                          compact
+                        />
+                      ))}
+                    </div>
+                  </section>
+                </>
+              )}
 
             </div>
 
@@ -597,9 +640,22 @@ function PackageCards({
 
   const cards = [
     {
+      id: 'Bronze',
+      name: 'Bronze',
+      subtitle: 'Photos Only',
+      badge: null,
+      popular: false,
+      label: '',
+      discounted: (PRICES.bronze as number[])[tier],
+      alacarte: (PRICES.bronze as number[])[tier],
+      savings: 0,
+      includes: ['Bronze Photos', 'Custom Listing Website (FREE)'],
+      note: '+ Listing Website FREE',
+    },
+    {
       id: 'Essential',
-      name: 'Essential',
-      subtitle: 'Silver Photos',
+      name: 'Silver / Essential',
+      subtitle: 'Photos + Floor Plan',
       badge: '10% Off',
       popular: true,
       label: 'MOST POPULAR',
@@ -607,6 +663,19 @@ function PackageCards({
       alacarte: essentialAlacarte,
       savings: (essentialAlacarte as number) - (essentialDiscounted as number),
       includes: ['Bronze Photos', 'Floor Plan', 'Custom Listing Website (FREE)'],
+      note: '+ Listing Website FREE',
+    },
+    {
+      id: 'Gold',
+      name: 'Gold',
+      subtitle: 'Photos + 3D + Drone',
+      badge: '10% Off',
+      popular: false,
+      label: '',
+      discounted: GOLD_BUNDLE_PRICES[market][tier],
+      alacarte: GOLD_RAW[market][tier],
+      savings: (GOLD_RAW[market][tier] as number) - (GOLD_BUNDLE_PRICES[market][tier] as number),
+      includes: ['Bronze Photos', 'Floor Plan', '3D Tour', 'Drone Photo', 'Custom Listing Website (FREE)'],
       note: '+ Listing Website FREE',
     },
     {
@@ -643,6 +712,92 @@ function PackageCards({
     },
   ];
 
+  const renderCard = (card: any) => (
+    <button
+      key={card.id}
+      onClick={() => {
+        if (card.id === 'Crown') onSelect('Crown', crownVariant);
+        else onSelect(card.id);
+      }}
+      className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 text-left hover:border-[#c9a84c] transition-all relative group flex flex-col"
+    >
+      {/* Popular badge */}
+      {card.popular && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#c9a84c] text-black text-[11px] font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap z-10">
+          ⭐ {card.label}
+        </div>
+      )}
+      {/* Discount badge */}
+      <div className="absolute top-0 right-0 bg-[#c9a84c] text-black text-[11px] font-bold px-2 py-1 rounded-bl-lg">
+        {card.badge}
+      </div>
+
+      <h3 className="text-[24px] font-bold text-white mb-1 group-hover:text-[#c9a84c] transition-colors">
+        {card.name}
+      </h3>
+      <p className="text-[#c9a84c] text-[13px] italic mb-4">{card.subtitle}</p>
+
+      {/* Crown variant selector — stop propagation so clicking tabs doesn't trigger onSelect */}
+      {card.id === 'Crown' && (
+        <div
+          className="flex gap-1 mb-4 flex-wrap"
+          onClick={e => e.stopPropagation()}
+        >
+          {crownVariants.map(v => (
+            <button
+              key={v.key}
+              type="button"
+              onClick={e => { e.stopPropagation(); setCrownVariant(v.key); }}
+              className={cn(
+                'px-2 py-1 rounded text-[11px] font-bold transition-all border',
+                crownVariant === v.key
+                  ? 'bg-[#c9a84c] text-black border-[#c9a84c]'
+                  : 'bg-transparent text-[#999] border-[#333] hover:border-[#c9a84c] hover:text-[#c9a84c]'
+              )}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Includes list */}
+      <div className="flex-grow mb-4">
+        <ul className="space-y-1">
+          {card.includes.map((item: string, i: number) => (
+            <li key={i} className="text-[13px] text-[#999] flex items-start gap-1.5">
+              <span className="text-[#c9a84c] mt-0.5">✓</span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Pricing */}
+      <div className="mt-auto pt-4 border-t border-[#222]">
+        <div className="flex items-end justify-between mb-1">
+          <div>
+            <div className="text-[#666] text-[13px] line-through decoration-1 mb-0.5">
+              ${card.alacarte}
+            </div>
+            <div className="text-white font-bold text-[32px] leading-none">
+              ${card.discounted}
+            </div>
+            <div className="text-[#c9a84c] text-[12px] font-medium mt-0.5">
+              You save ${card.savings}
+            </div>
+          </div>
+          <div className="text-[#c9a84c] font-bold text-[14px] group-hover:translate-x-1 transition-transform">
+            Select →
+          </div>
+        </div>
+        {card.note && (
+          <div className="text-[#4CAF50] text-[11px] font-medium mt-2">{card.note}</div>
+        )}
+      </div>
+    </button>
+  );
+
   return (
     <div className="mb-16">
       <div className="mb-8">
@@ -652,92 +807,18 @@ function PackageCards({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {cards.map(card => (
-          <button
-            key={card.id}
-            onClick={() => {
-              if (card.id === 'Crown') onSelect('Crown', crownVariant);
-              else onSelect(card.id);
-            }}
-            className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 text-left hover:border-[#c9a84c] transition-all relative group flex flex-col"
-          >
-            {/* Popular badge */}
-            {card.popular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#c9a84c] text-black text-[11px] font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap z-10">
-                ⭐ {card.label}
-              </div>
-            )}
-            {/* Discount badge */}
-            <div className="absolute top-0 right-0 bg-[#c9a84c] text-black text-[11px] font-bold px-2 py-1 rounded-bl-lg">
-              {card.badge}
-            </div>
+      <div className="mb-10">
+        <h3 className="text-[20px] font-bold text-white mb-4 border-b border-[#333] pb-2">Photo Packages</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {cards.filter(c => ['Bronze', 'Essential', 'Gold'].includes(c.id)).map(renderCard)}
+        </div>
+      </div>
 
-            <h3 className="text-[24px] font-bold text-white mb-1 group-hover:text-[#c9a84c] transition-colors">
-              {card.name}
-            </h3>
-            <p className="text-[#c9a84c] text-[13px] italic mb-4">{card.subtitle}</p>
-
-            {/* Crown variant selector — stop propagation so clicking tabs doesn't trigger onSelect */}
-            {card.id === 'Crown' && (
-              <div
-                className="flex gap-1 mb-4 flex-wrap"
-                onClick={e => e.stopPropagation()}
-              >
-                {crownVariants.map(v => (
-                  <button
-                    key={v.key}
-                    type="button"
-                    onClick={e => { e.stopPropagation(); setCrownVariant(v.key); }}
-                    className={cn(
-                      'px-2 py-1 rounded text-[11px] font-bold transition-all border',
-                      crownVariant === v.key
-                        ? 'bg-[#c9a84c] text-black border-[#c9a84c]'
-                        : 'bg-transparent text-[#999] border-[#333] hover:border-[#c9a84c] hover:text-[#c9a84c]'
-                    )}
-                  >
-                    {v.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Includes list */}
-            <div className="flex-grow mb-4">
-              <ul className="space-y-1">
-                {card.includes.map((item, i) => (
-                  <li key={i} className="text-[13px] text-[#999] flex items-start gap-1.5">
-                    <span className="text-[#c9a84c] mt-0.5">✓</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Pricing */}
-            <div className="mt-auto pt-4 border-t border-[#222]">
-              <div className="flex items-end justify-between mb-1">
-                <div>
-                  <div className="text-[#666] text-[13px] line-through decoration-1 mb-0.5">
-                    ${card.alacarte}
-                  </div>
-                  <div className="text-white font-bold text-[32px] leading-none">
-                    ${card.discounted}
-                  </div>
-                  <div className="text-[#c9a84c] text-[12px] font-medium mt-0.5">
-                    You save ${card.savings}
-                  </div>
-                </div>
-                <div className="text-[#c9a84c] font-bold text-[14px] group-hover:translate-x-1 transition-transform">
-                  Select →
-                </div>
-              </div>
-              {card.note && (
-                <div className="text-[#4CAF50] text-[11px] font-medium mt-2">{card.note}</div>
-              )}
-            </div>
-          </button>
-        ))}
+      <div>
+        <h3 className="text-[20px] font-bold text-white mb-4 border-b border-[#333] pb-2">Photo & Video Packages</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {cards.filter(c => ['Signature', 'Crown'].includes(c.id)).map(renderCard)}
+        </div>
       </div>
     </div>
   );
