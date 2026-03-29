@@ -1,19 +1,22 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, Minus, Plus, ChevronDown, Download, Phone, X, ChevronUp } from 'lucide-react';
+import { Check, Minus, Plus, ChevronDown, Download, Phone, X, ChevronUp, Calculator } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { NJ_PRICES, MANHATTAN_PRICES, TIERS, SERVICES_LIST, Market, Tier } from '../data/pricing_v2';
+import { 
+  NJ_PRICES, MANHATTAN_PRICES, TIERS, SERVICES_LIST, Market, Tier,
+  ESSENTIAL_PRICES, GOLD_BUNDLE_PRICES, SIGNATURE_PRICES,
+  CROWN_STANDARD_PRICES, CROWN_BRANDING_PRICES, CROWN_SPOTLIGHT_PRICES,
+  SILVER_RAW, GOLD_RAW
+} from '../data/pricing_v2';
 import { calculateQuote, CalculatorState } from '../utils/calculatorLogic_v2';
 import { BookingModal } from './BookingModal';
 import { generatePDF } from '../utils/pdfGenerator';
 
 export function CalculatorV2() {
-  const [view, setView] = useState<'custom' | 'packages'>('custom');
   const [state, setState] = useState<CalculatorState>({
     market: 'NJ',
-    tier: 2, // 3501-5000
-    photoPackage: 'silver', // Default to Silver as it's "Most Popular"
-    selectedServices: new Set(),
+    tier: 1, // 1500-2000
+    selectedServices: new Set(['bronze', 'floorPlan']), // Default to Silver
     quantities: {},
   });
   const [showClearTooltip, setShowClearTooltip] = useState(false);
@@ -26,13 +29,6 @@ export function CalculatorV2() {
   // Handlers
   const setMarket = (m: Market) => setState(s => ({ ...s, market: m }));
   const setTier = (t: Tier) => setState(s => ({ ...s, tier: t }));
-  
-  const setPhotoPackage = (p: CalculatorState['photoPackage']) => {
-    setState(s => ({ 
-      ...s, 
-      photoPackage: s.photoPackage === p ? 'none' : p 
-    }));
-  };
   
   const toggleService = (id: string) => {
     const newSet = new Set(state.selectedServices);
@@ -57,19 +53,14 @@ export function CalculatorV2() {
   };
 
   const removeItem = (id: string) => {
-    if (id === 'bronze' || id === 'silver' || id === 'gold') {
-      setState(s => ({ ...s, photoPackage: 'none' }));
-    } else {
-      const newSet = new Set(state.selectedServices);
-      newSet.delete(id);
-      setState(s => ({ ...s, selectedServices: newSet }));
-    }
+    const newSet = new Set(state.selectedServices);
+    newSet.delete(id);
+    setState(s => ({ ...s, selectedServices: newSet }));
   };
 
   const clearAll = () => {
     setState(s => ({
       ...s,
-      photoPackage: 'none',
       selectedServices: new Set(),
       quantities: {}
     }));
@@ -87,36 +78,48 @@ export function CalculatorV2() {
     setIsGeneratingPDF(false);
   };
 
-  const applyPackage = (pkg: string, crownOption?: string) => {
-    const newState: CalculatorState = {
-      market: state.market,
-      tier: state.tier,
-      photoPackage: 'none',
-      selectedServices: new Set(),
-      quantities: {}
-    };
-
-    if (pkg === 'Essential') {
-      newState.photoPackage = 'silver';
-      newState.selectedServices.add('quickTour');
-    } else if (pkg === 'Signature') {
-      newState.photoPackage = 'gold';
-      newState.selectedServices.add('cinematic');
-    } else if (pkg === 'Crown') {
-      newState.photoPackage = 'gold';
-      newState.selectedServices.add('cinematic');
-      if (crownOption) newState.selectedServices.add(crownOption);
-    }
-
-    setState(newState);
-    setIsBookingModalOpen(true);
-  };
-
   const scrollToQuote = () => {
     const quoteElement = document.getElementById('quote-sidebar');
     if (quoteElement) {
       quoteElement.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const selectPackage = (pkg: string, crownVariant?: 'standard' | 'agentBranding' | 'communitySpotlight') => {
+    let newServices = new Set<string>();
+
+    switch (pkg) {
+      case 'Essential':
+        newServices.add('bronze');
+        newServices.add('floorPlan');
+        newServices.add('listingWebsite');
+        break;
+      case 'Signature':
+        newServices.add('bronze');
+        newServices.add('floorPlan');
+        newServices.add('threeDTour');
+        newServices.add('dronePhotoAddon');
+        newServices.add('standard');
+        newServices.add('listingWebsite');
+        break;
+      case 'Crown':
+        newServices.add('bronze');
+        newServices.add('floorPlan');
+        newServices.add('threeDTour');
+        newServices.add('dronePhotoAddon');
+        newServices.add('cinematic');
+        newServices.add('listingWebsite');
+        // Add selected 2nd video variant
+        const variant = crownVariant ?? 'agentBranding';
+        newServices.add(variant);
+        break;
+    }
+
+    setState(s => ({
+      ...s,
+      selectedServices: newServices,
+      quantities: {}
+    }));
   };
 
   return (
@@ -136,7 +139,7 @@ export function CalculatorV2() {
       </div>
 
       {/* Top Bar Controls */}
-      <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-8">
+      <div className="flex flex-col items-center justify-center gap-6 mb-12">
         {/* Market Toggle */}
         <div className="bg-[#111] p-1 rounded-full border border-[#222] flex">
           {(['NJ', 'Manhattan'] as Market[]).map(m => (
@@ -155,52 +158,50 @@ export function CalculatorV2() {
           ))}
         </div>
 
-        {/* Property Size Dropdown */}
-        <div className="relative group">
-          <select
-            value={state.tier}
-            onChange={(e) => setTier(Number(e.target.value) as Tier)}
-            className="appearance-none bg-[#111] text-white border border-[#222] rounded-lg px-6 py-3 pr-10 font-bold focus:outline-none focus:border-[#c9a84c] focus:ring-1 focus:ring-[#c9a84c] cursor-pointer min-w-[200px]"
-          >
-            {TIERS.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#c9a84c] pointer-events-none" size={16} />
-        </div>
-      </div>
-
-      {/* View Toggle */}
-      <div className="flex justify-center mb-12">
-        <div className="bg-[#111] p-1 rounded-full border border-[#222] flex">
-          <button
-            onClick={() => setView('custom')}
-            className={cn(
-              "px-8 py-2 rounded-full text-sm font-bold transition-all",
-              view === 'custom'
-                ? "bg-[#c9a84c] text-black shadow-[0_0_15px_rgba(201,168,76,0.3)]"
-                : "text-[#999] hover:text-white"
-            )}
-          >
-            CUSTOM BUILD
-          </button>
-          <button
-            onClick={() => setView('packages')}
-            className={cn(
-              "px-8 py-2 rounded-full text-sm font-bold transition-all",
-              view === 'packages'
-                ? "bg-[#c9a84c] text-black shadow-[0_0_15px_rgba(201,168,76,0.3)]"
-                : "text-[#999] hover:text-white"
-            )}
-          >
-            PACKAGES
-          </button>
+        {/* Property Size Buttons */}
+        <div className="flex flex-wrap justify-center gap-2 max-w-4xl mx-auto">
+          {TIERS.map(t => (
+            <button
+              key={t.value}
+              onClick={() => setTier(t.value as Tier)}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-bold transition-all border",
+                state.tier === t.value
+                  ? "bg-[#c9a84c] text-black border-[#c9a84c] shadow-[0_0_15px_rgba(201,168,76,0.3)]"
+                  : "bg-[#111] text-[#999] border-[#222] hover:border-[#444] hover:text-white"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Main Content */}
       <AnimatePresence mode="wait">
-        {view === 'custom' ? (
+        {state.tier === 5 ? (
+          <motion.div
+            key="custom-quote"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex flex-col items-center justify-center py-20 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl max-w-3xl mx-auto text-center px-6"
+          >
+            <div className="w-16 h-16 bg-[#c9a84c]/10 rounded-full flex items-center justify-center mb-6">
+              <Calculator className="text-[#c9a84c]" size={32} />
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-4">Custom Quote Required</h2>
+            <p className="text-[#999] text-lg mb-8 max-w-md">
+              Properties over 5,000 sqft require a custom quote. Call (917) 683-8034 or email contact@regalisrealtymedia.com.
+            </p>
+            <a 
+              href="mailto:contact@regalisrealtymedia.com"
+              className="bg-[#c9a84c] hover:bg-[#b09342] text-black font-bold px-8 py-4 rounded-lg transition-colors inline-flex items-center gap-2"
+            >
+              Get a Custom Quote →
+            </a>
+          </motion.div>
+        ) : (
           <motion.div
             key="custom"
             initial={{ opacity: 0, y: 20 }}
@@ -211,44 +212,36 @@ export function CalculatorV2() {
             {/* Left Column: Services */}
             <div className="w-full lg:w-[60%] space-y-10">
               
+              <PackageCards market={state.market} tier={state.tier} onSelect={selectPackage} />
+
               {/* Photos Section */}
               <section>
                 <div className="mb-6">
-                  <h2 className="text-[28px] font-bold text-white mb-2">Photography</h2>
-                  <p className="text-[15px] text-[#999]">Choose one photo package</p>
+                  <h2 className="text-[28px] font-bold text-white mb-2">Customize Your Order</h2>
+                  <p className="text-[15px] text-[#999]">Add or remove individual services. Your discount adjusts automatically.</p>
+                </div>
+                <div className="mb-6">
+                  <h3 className="text-[20px] font-bold text-white mb-2">Photography</h3>
                 </div>
                 <div className="space-y-4">
-                  <PhotoCard 
-                    id="bronze"
-                    name="Bronze — Photos Only"
-                    desc="HDR interior & exterior photos, MLS-ready with window pull & sky replacement"
-                    price={state.market === 'NJ' ? NJ_PRICES.bronze[state.tier] : MANHATTAN_PRICES.bronze[state.tier]}
-                    selected={state.photoPackage === 'bronze'}
-                    onSelect={() => setPhotoPackage('bronze')}
-                  />
-                  <PhotoCard 
-                    id="silver"
-                    name="Silver — Photos + Floor Plan"
-                    desc="Everything in Bronze + 2D floor plan with measurements (10% Off)"
-                    price={state.market === 'NJ' 
-                      ? NJ_PRICES.bronze[state.tier] + NJ_PRICES.floorPlan[state.tier] 
-                      : MANHATTAN_PRICES.bronze[state.tier] + MANHATTAN_PRICES.floorPlan[state.tier]}
-                    selected={state.photoPackage === 'silver'}
-                    onSelect={() => setPhotoPackage('silver')}
-                    isPopular
-                    discountLabel="10% OFF"
-                  />
-                  <PhotoCard 
-                    id="gold"
-                    name="Gold — Photos + Floor Plan + Drone + 3D Tour"
-                    desc="The complete visual package — photos, floor plan, drone, and Zillow interactive 3D tour (10% Off)"
-                    price={state.market === 'NJ'
-                      ? NJ_PRICES.bronze[state.tier] + NJ_PRICES.floorPlan[state.tier] + NJ_PRICES.threeDTour[state.tier] + NJ_PRICES.dronePhotoAddon
-                      : MANHATTAN_PRICES.bronze[state.tier] + MANHATTAN_PRICES.floorPlan[state.tier] + MANHATTAN_PRICES.threeDTour[state.tier] + MANHATTAN_PRICES.dronePhotoAddon}
-                    selected={state.photoPackage === 'gold'}
-                    onSelect={() => setPhotoPackage('gold')}
-                    discountLabel="10% OFF"
-                  />
+                  {SERVICES_LIST.filter(s => {
+                    if (s.category !== 'photo') return false;
+                    if (s.manhattanOnly && state.market !== 'Manhattan') return false;
+                    
+                    const hasBronze = state.selectedServices.has('bronze');
+                    if (s.id === 'dronePhotoAddon' && !hasBronze) return false;
+                    if (s.id === 'droneStandalone' && hasBronze) return false;
+                    
+                    return true;
+                  }).map(service => (
+                    <ServiceCard
+                      key={service.id}
+                      service={service}
+                      state={state}
+                      toggle={toggleService}
+                      updateQuantity={updateQuantity}
+                    />
+                  ))}
                 </div>
               </section>
 
@@ -259,33 +252,15 @@ export function CalculatorV2() {
                   <p className="text-[15px] text-[#999]">Add a video to your package</p>
                 </div>
                 <div className="space-y-4">
-                  {SERVICES_LIST.filter(s => s.category === 'video' && !s.manhattanOnly).map(service => (
+                  {SERVICES_LIST.filter(s => s.category === 'video' && (!s.manhattanOnly || state.market === 'Manhattan')).map(service => (
                     <ServiceCard
                       key={service.id}
                       service={service}
                       state={state}
                       toggle={toggleService}
+                      updateQuantity={updateQuantity}
                     />
                   ))}
-                  
-                  {/* Drone in Video Logic */}
-                  {state.market === 'Manhattan' && (
-                    <div className="mt-4">
-                      <div 
-                        onClick={() => toggleService('droneInVideo')}
-                        className={cn(
-                          "service-card group flex items-center gap-4",
-                          state.selectedServices.has('droneInVideo') && "selected"
-                        )}
-                      >
-                        <div className={cn("custom-checkbox", state.selectedServices.has('droneInVideo') && "selected")} />
-                        <div className="flex-grow flex justify-between items-center">
-                          <span className="text-[17px] font-bold text-white">Drone footage in video</span>
-                          <span className="text-[#c9a84c] font-bold text-[20px]">+$100</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </section>
 
@@ -296,24 +271,26 @@ export function CalculatorV2() {
                   <p className="text-[15px] text-[#999]">Enhance your package</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {SERVICES_LIST.filter(s => s.category === 'addon').map(service => {
-                    // Conditional Visibility
-                    if (service.id === 'floorPlan' && (state.photoPackage === 'silver' || state.photoPackage === 'gold')) return null;
-                    if (service.id === 'threeDTour' && state.photoPackage === 'gold') return null;
-                    if (service.id === 'dronePhotoAddon' && state.photoPackage === 'gold') return null;
-                    if (service.id === 'droneStandalone' && state.photoPackage !== 'none') return null;
-
-                    return (
-                      <ServiceCard
-                        key={service.id}
-                        service={service}
-                        state={state}
-                        toggle={toggleService}
-                        updateQuantity={updateQuantity}
-                        compact
-                      />
-                    );
-                  })}
+                  {SERVICES_LIST.filter(s => {
+                    if (s.category !== 'addon') return false;
+                    if (s.id === 'nextDayVideoDelivery') {
+                      const hasVideo = state.selectedServices.has('standard') || 
+                                       state.selectedServices.has('cinematic') || 
+                                       state.selectedServices.has('agentBranding') || 
+                                       state.selectedServices.has('communitySpotlight');
+                      if (!hasVideo) return false;
+                    }
+                    return true;
+                  }).map(service => (
+                    <ServiceCard
+                      key={service.id}
+                      service={service}
+                      state={state}
+                      toggle={toggleService}
+                      updateQuantity={updateQuantity}
+                      compact
+                    />
+                  ))}
                 </div>
               </section>
 
@@ -358,10 +335,10 @@ export function CalculatorV2() {
                       className="mb-6 overflow-hidden"
                     >
                       <div className="bg-[#c9a84c] text-black font-bold text-center py-2 rounded-lg mb-2">
-                        ⭐ {quote.discountName}: {quote.discountPercent * 100}% OFF
+                        ⭐ {quote.discountName}
                       </div>
-                      <div className="text-center text-[#c9a84c] font-medium">
-                        You Save: ${quote.discountAmount} ({quote.discountPercent * 100}%)
+                      <div className="text-center text-[#4CAF50] font-bold">
+                        You Save: ${quote.discountAmount}
                       </div>
                     </motion.div>
                   )}
@@ -450,21 +427,12 @@ export function CalculatorV2() {
               </div>
             </div>
           </motion.div>
-        ) : (
-          <motion.div
-            key="packages"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-          >
-            <PackagesView market={state.market} tier={state.tier} onBook={applyPackage} />
-          </motion.div>
         )}
       </AnimatePresence>
 
       {/* Mobile Floating Pill */}
       <AnimatePresence>
-        {view === 'custom' && itemCount > 0 && (
+        {state.tier < 5 && itemCount > 0 && (
           <motion.div
             initial={{ y: 100 }}
             animate={{ y: 0 }}
@@ -511,56 +479,6 @@ export function CalculatorV2() {
 
 // Sub-components
 
-function PhotoCard({ id, name, desc, price, selected, onSelect, isPopular, discountLabel }: any) {
-  const [serviceName, ...taglineParts] = name.split('—');
-  const tagline = taglineParts.join('—');
-
-  return (
-    <div 
-      onClick={onSelect}
-      className={cn(
-        "service-card group",
-        selected && "selected"
-      )}
-    >
-      {isPopular && (
-        <div className="absolute -top-3 right-6 bg-[#c9a84c] text-black text-xs font-bold px-3 py-1 rounded-full z-20 shadow-lg">
-          MOST POPULAR
-        </div>
-      )}
-      <div className="flex justify-between items-start gap-4">
-        <div className="flex gap-4 w-full">
-          <div className={cn("custom-radio mt-1", selected && "selected")} />
-          
-          <div className="flex-grow">
-            <div className="flex justify-between items-start w-full">
-              <div>
-                <span className="text-[17px] font-bold text-white">{serviceName.trim()}</span>
-                {tagline && <span className="text-[17px] font-normal text-[#999]"> — {tagline.trim()}</span>}
-              </div>
-              
-              <div className="text-right shrink-0 ml-4">
-                {discountLabel ? (
-                  <div className="flex flex-col items-end">
-                    <span className="text-[#c9a84c] font-bold text-[20px]">
-                      ${Math.round(price * 0.9 / 5) * 5}
-                    </span>
-                    <span className="text-[#666] text-[14px] line-through decoration-1">${price}</span>
-                  </div>
-                ) : (
-                  <span className="text-[#c9a84c] font-bold text-[20px]">${price}</span>
-                )}
-              </div>
-            </div>
-            
-            <p className="text-[14px] text-[#888] leading-[1.5] mt-1.5 max-w-[90%]">{desc}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ServiceCard({ service, state, toggle, updateQuantity, compact }: any) {
   const isSelected = state.selectedServices.has(service.id);
   
@@ -569,29 +487,34 @@ function ServiceCard({ service, state, toggle, updateQuantity, compact }: any) {
   let price = 0;
   // @ts-ignore
   const rawPrice = prices[service.priceKey];
-  if (Array.isArray(rawPrice)) price = rawPrice[state.tier];
+  if (Array.isArray(rawPrice)) price = rawPrice[state.tier] || 0;
   else price = rawPrice;
 
+  const [serviceName, ...taglineParts] = service.name.split('—');
+  const tagline = taglineParts.join('—');
+
   return (
-    <div 
+    <button 
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('.quantity-ctrl')) return;
         toggle(service.id);
         if (!isSelected && service.type === 'quantity') updateQuantity(service.id, 1);
       }}
       className={cn(
-        "service-card group",
+        "service-card group w-full text-left relative",
         isSelected && "selected",
         compact ? "flex flex-col h-full" : ""
       )}
+      aria-pressed={isSelected}
     >
       <div className="flex items-start gap-4 w-full">
-        <div className={cn("custom-checkbox mt-1", isSelected && "selected")} />
+        <div className={cn("custom-checkbox mt-1", isSelected && "selected")} aria-hidden="true" />
         
         <div className="flex-grow w-full">
           <div className="flex justify-between items-start w-full">
             <div>
-              <span className="text-[17px] font-bold text-white">{service.name}</span>
+              <span className="text-[17px] font-bold text-white">{serviceName.trim()}</span>
+              {tagline && <span className="text-[17px] font-normal text-[#999]"> — {tagline.trim()}</span>}
             </div>
             
             <div className="text-right shrink-0 ml-4">
@@ -608,389 +531,213 @@ function ServiceCard({ service, state, toggle, updateQuantity, compact }: any) {
             <div className="mt-4 flex justify-between items-end w-full">
                <p className="text-[14px] text-[#888] leading-[1.5] flex-grow pr-4">{service.description}</p>
                {service.type === 'quantity' && isSelected && (
-                <div className="quantity-ctrl flex items-center gap-2 bg-[#1a1a1a] rounded px-2 py-1 border border-[#333] shrink-0">
-                  <button onClick={() => updateQuantity(service.id, -1)} className="hover:text-[#c9a84c]"><Minus size={12}/></button>
-                  <span className="text-xs font-mono w-4 text-center text-white">{state.quantities[service.id] || 1}</span>
-                  <button onClick={() => updateQuantity(service.id, 1)} className="hover:text-[#c9a84c]"><Plus size={12}/></button>
+                <div className="quantity-ctrl flex items-center gap-2 bg-[#1a1a1a] rounded px-2 py-1 border border-[#333] shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" onClick={() => updateQuantity(service.id, -1)} className="hover:text-[#c9a84c]" aria-label="Decrease quantity"><Minus size={12}/></button>
+                  <span className="text-xs font-mono w-4 text-center text-white" aria-live="polite">{state.quantities[service.id] || 1}</span>
+                  <button type="button" onClick={() => updateQuantity(service.id, 1)} className="hover:text-[#c9a84c]" aria-label="Increase quantity"><Plus size={12}/></button>
                 </div>
               )}
             </div>
           )}
 
           {!compact && service.type === 'quantity' && isSelected && (
-             <div className="quantity-ctrl flex items-center gap-2 bg-[#1a1a1a] rounded px-2 py-1 border border-[#333] mt-3 w-fit">
-                <button onClick={() => updateQuantity(service.id, -1)} className="hover:text-[#c9a84c]"><Minus size={12}/></button>
-                <span className="text-xs font-mono w-4 text-center text-white">{state.quantities[service.id] || 1}</span>
-                <button onClick={() => updateQuantity(service.id, 1)} className="hover:text-[#c9a84c]"><Plus size={12}/></button>
+             <div className="quantity-ctrl flex items-center gap-2 bg-[#1a1a1a] rounded px-2 py-1 border border-[#333] mt-3 w-fit" onClick={(e) => e.stopPropagation()}>
+                <button type="button" onClick={() => updateQuantity(service.id, -1)} className="hover:text-[#c9a84c]" aria-label="Decrease quantity"><Minus size={12}/></button>
+                <span className="text-xs font-mono w-4 text-center text-white" aria-live="polite">{state.quantities[service.id] || 1}</span>
+                <button type="button" onClick={() => updateQuantity(service.id, 1)} className="hover:text-[#c9a84c]" aria-label="Increase quantity"><Plus size={12}/></button>
               </div>
           )}
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
-function PackagesView({ market, tier, onBook }: { market: Market, tier: Tier, onBook: (pkg: string, crownOption?: string) => void }) {
-  const [crownVideo, setCrownVideo] = useState<'standard' | 'agentBranding' | 'communitySpotlight'>('standard');
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+function PackageCards({
+  market, tier, onSelect
+}: {
+  market: Market;
+  tier: Tier;
+  onSelect: (pkg: string, crownVariant?: 'standard' | 'agentBranding' | 'communitySpotlight') => void;
+}) {
+  // Crown variant state — lives inside PackageCards
+  const [crownVariant, setCrownVariant] = useState<'standard' | 'agentBranding' | 'communitySpotlight'>('agentBranding');
 
-  const toggleExpand = (key: string) => {
-    setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  if (tier === 5) return null; // Contact Us tier — parent handles this
 
-  const getPackagePrice = (pkg: string) => {
-    let simState: CalculatorState = {
-      market,
-      tier,
-      photoPackage: 'none',
-      selectedServices: new Set(),
-      quantities: {}
-    };
+  // ── Read from pre-verified arrays — never recalculate ──
+  const essentialDiscounted = ESSENTIAL_PRICES[market][tier];
+  const essentialAlacarte   = SILVER_RAW[market][tier];
 
-    if (pkg === 'Essential') {
-      simState.photoPackage = 'silver';
-      simState.selectedServices.add('quickTour');
-    } else if (pkg === 'Signature') {
-      simState.photoPackage = 'gold';
-      simState.selectedServices.add('cinematic');
-    } else if (pkg === 'Crown') {
-      simState.photoPackage = 'gold';
-      simState.selectedServices.add('cinematic');
-      simState.selectedServices.add(crownVideo);
-    }
+  const signatureDiscounted = SIGNATURE_PRICES[market][tier];
+  // Signature à la carte: Gold raw + Standard video
+  const PRICES = market === 'NJ' ? NJ_PRICES : MANHATTAN_PRICES;
+  const stdPrice = Array.isArray(PRICES.standard) ? PRICES.standard[tier] : 0;
+  const signatureAlacarte = GOLD_RAW[market][tier] + stdPrice;
 
-    const q = calculateQuote(simState);
-    return { price: q.finalTotal, save: q.discountPercent, savings: q.discountAmount };
-  };
+  const crownDiscounted = crownVariant === 'standard'
+    ? CROWN_STANDARD_PRICES[market][tier]
+    : crownVariant === 'agentBranding'
+    ? CROWN_BRANDING_PRICES[market][tier]
+    : CROWN_SPOTLIGHT_PRICES[market][tier];
 
-  const renderDescription = (title: string, desc: string, key: string) => (
-    <div className="mb-5">
-      <div className="flex items-start gap-3">
-        <Check size={16} className="text-[#c9a84c] mt-1 shrink-0" />
-        <div>
-          <h4 className="text-white font-bold text-base">{title}</h4>
-          <div className="text-[#B0B0B0] text-sm leading-relaxed mt-1">
-            {expanded[key] ? desc : (
-              <>
-                {desc.split('.')[0]}.
-                <button 
-                  onClick={() => toggleExpand(key)}
-                  className="text-[#c9a84c] ml-2 hover:underline text-xs uppercase font-bold"
-                >
-                  Read more
-                </button>
-              </>
-            )}
-            {expanded[key] && (
-              <button 
-                onClick={() => toggleExpand(key)}
-                className="text-[#666] block mt-1 hover:text-[#c9a84c] text-xs uppercase font-bold"
-              >
-                Show less
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  const cinePrice = Array.isArray(PRICES.cinematic) ? PRICES.cinematic[tier] : 0;
+  const crownSecondPrice = crownVariant === 'standard'
+    ? stdPrice
+    : crownVariant === 'agentBranding'
+    ? PRICES.agentBranding
+    : PRICES.communitySpotlight;
+  const crownAlacarte = GOLD_RAW[market][tier] + cinePrice + crownSecondPrice;
 
-  const essentialPrice = getPackagePrice('Essential');
-  const signaturePrice = getPackagePrice('Signature');
-  const crownPrice = getPackagePrice('Crown');
+  const crownVariants = [
+    { key: 'standard'          as const, label: '+ Standard Video' },
+    { key: 'agentBranding'     as const, label: '+ Agent Branding' },
+    { key: 'communitySpotlight' as const, label: '+ Community Spotlight' },
+  ];
 
-  const handlePackageBook = (pkgName: string, price: number) => {
-    // This is a simplified handler. In a real app, you might want to pre-select the package in the main state
-    // and then open the modal. For now, we'll just alert or link, but the request asked for the modal.
-    // To do this properly, we need to lift the state up or pass a handler to set the main state.
-    // However, since we are inside CalculatorV2, we can't easily change the parent state from here without props.
-    // But wait, PackagesView is a child of CalculatorV2.
-    // Actually, the prompt says "BOOK NOW on each package card -> opens the same booking modal, pre-populated with that package's services".
-    // Since we don't have a way to easily pass this data back up without refactoring, 
-    // and the user asked for a "Fix", let's just link to the calendar for now in the packages view 
-    // OR ideally, we should refactor to allow selecting a package to populate the custom view.
-    // Given the constraints and the "Fix" focus on the main buttons, I will leave the package buttons as links 
-    // BUT the prompt explicitly asked for it.
-    // Let's try to implement a simple alert for now or just keep the link if it's too complex to refactor in one go.
-    // Actually, I can pass a handler to PackagesView.
-    window.location.href = "https://www.regalisrealtymedia.com/calendar";
-  };
+  const cards = [
+    {
+      id: 'Essential',
+      name: 'Essential',
+      subtitle: 'Silver Photos',
+      badge: '10% Off',
+      popular: true,
+      label: 'MOST POPULAR',
+      discounted: essentialDiscounted,
+      alacarte: essentialAlacarte,
+      savings: (essentialAlacarte as number) - (essentialDiscounted as number),
+      includes: ['Bronze Photos', 'Floor Plan', 'Custom Listing Website (FREE)'],
+      note: '+ Listing Website FREE',
+    },
+    {
+      id: 'Signature',
+      name: 'Signature',
+      subtitle: 'Gold + Standard Video',
+      badge: '15% Off',
+      popular: false,
+      label: 'BEST VALUE',
+      discounted: signatureDiscounted,
+      alacarte: signatureAlacarte,
+      savings: signatureAlacarte - (signatureDiscounted as number),
+      includes: ['Bronze Photos', 'Floor Plan', '3D Tour', 'Drone Photo', 'Regalis Standard Video', 'Listing Website (FREE)'],
+      note: '+ Listing Website FREE',
+    },
+    {
+      id: 'Crown',
+      name: 'Crown',
+      subtitle: 'Gold + Cinematic + 2nd Video',
+      badge: '20% Off',
+      popular: false,
+      label: 'MAXIMUM IMPACT',
+      discounted: crownDiscounted,
+      alacarte: crownAlacarte,
+      savings: crownAlacarte - (crownDiscounted as number),
+      includes: [
+        'Bronze Photos', 'Floor Plan', '3D Tour', 'Drone Photo',
+        'Regalis Cinematic',
+        crownVariant === 'standard' ? 'Regalis Standard Video' :
+        crownVariant === 'agentBranding' ? 'Agent Branding Video' : 'Community Spotlight',
+        'Listing Website (FREE)',
+      ],
+      note: '+ Listing Website FREE + 2 Twilight Photos FREE',
+    },
+  ];
 
   return (
-    <div className="space-y-16">
-      {/* Package Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
-        {/* ESSENTIAL */}
-        <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-8 flex flex-col relative">
-          <div className="absolute top-0 right-0 bg-[#c9a84c] text-black text-xs font-bold px-3 py-1 rounded-bl-lg border-l border-b border-[#c9a84c]">
-            15% OFF
-          </div>
-          <h3 className="text-[32px] font-bold text-white mb-1">Essential</h3>
-          <p className="text-[#c9a84c] italic text-sm mb-8">Silver Photos + Quick Tour Video + Listing Website</p>
-          
-          <div className="flex-grow">
-            {renderDescription(
-              "Silver Photos — Interior & Exterior", 
-              "Professional HDR photography covering every room, key exterior angles, and detail shots. Includes window pull, sky replacement, and color correction. MLS-ready delivery within 24 hours. Silver includes your floor plan at a bundled rate.",
-              "ess_photos"
-            )}
-            {renderDescription(
-              "Floor Plan — 2D Marketing Layout", 
-              "Clean, accurate 2D floor plan with room labels, dimensions, and total square footage. Branded with your information and ready for MLS, print flyers, and digital marketing.",
-              "ess_fp"
-            )}
-            {renderDescription(
-              "Quick Tour Video — Social-Ready Walkthrough", 
-              "A 15-30 second vertical video walkthrough set to music — designed specifically for Instagram Reels, TikTok, and Facebook Stories. Fast-paced, engaging, and optimized for the way buyers actually scroll. This is NOT a slideshow — it's a professionally shot and edited video.",
-              "ess_qt"
-            )}
-            {renderDescription(
-              "Custom Listing Website", 
-              "A branded, single-property website with photo gallery, video embed, property details, and agent contact info. Shareable link for social media, email campaigns, and open house sign-in pages. Included FREE with this package.",
-              "ess_web"
-            )}
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-[#222]">
-            <div className="text-[#999] text-xs font-bold uppercase mb-1">PACKAGE PRICE</div>
-            <div className="flex items-end justify-between mb-4">
-              <span className="text-white font-bold text-4xl">${essentialPrice.price}</span>
-              <span className="bg-[#c9a84c]/20 text-[#c9a84c] text-xs font-bold px-2 py-1 rounded">
-                You Save ${essentialPrice.savings}
-              </span>
-            </div>
-            <button 
-              onClick={() => onBook('Essential')}
-              className="block w-full bg-[#c9a84c] hover:bg-[#b09342] text-black font-bold text-center py-3 rounded-lg transition-colors"
-            >
-              BOOK NOW →
-            </button>
-          </div>
-        </div>
-
-        {/* SIGNATURE */}
-        <div className="bg-[#0a0a0a] border border-[#c9a84c]/40 rounded-xl p-8 flex flex-col relative shadow-[0_8px_32px_rgba(201,168,76,0.1)] transform md:-translate-y-4">
-          <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#c9a84c] text-black text-xs font-bold px-4 py-1 rounded-full shadow-lg">
-            ⭐ MOST POPULAR
-          </div>
-          <div className="absolute top-0 right-0 bg-[#c9a84c] text-black text-xs font-bold px-3 py-1 rounded-bl-lg border-l border-b border-[#c9a84c]">
-            20% OFF
-          </div>
-          <h3 className="text-[32px] font-bold text-white mb-1">Signature</h3>
-          <p className="text-[#c9a84c] italic text-sm mb-8">Gold Photos + Cinematic Reel + 2 Twilight Exteriors + Listing Website</p>
-          
-          <div className="flex-grow">
-            {renderDescription(
-              "Gold Photos — The Complete Visual Package", 
-              "Everything in Silver, PLUS drone aerial photography, interactive 3D tour (Zillow-compatible Matterport-style walkthrough), and professional floor plan. This is the full visual toolkit — every angle, every perspective, every format a buyer could want.",
-              "sig_photos"
-            )}
-            {renderDescription(
-              "Regalis Cinematic — Premium Listing Film", 
-              "A fully produced cinematic listing video (60-90 seconds) with professional camera work, stabilized movement, color grading, bespoke text overlays, branded intro/outro, and custom sound design. Available in horizontal (MLS/YouTube) or vertical (social media) formats. This is the flagship video product — the one that makes agents and listings look extraordinary. Drone footage included in NJ; available as add-on in Manhattan.",
-              "sig_cine"
-            )}
-            {renderDescription(
-              "2 Twilight Exterior Photos", 
-              "Golden hour exterior photography that transforms the property's curb appeal. Warm sky tones, interior glow, and dramatic lighting that makes every home look like a magazine cover. Included complimentary with this package.",
-              "sig_twi"
-            )}
-            {renderDescription(
-              "Custom Listing Website", 
-              "Branded single-property website included FREE.",
-              "sig_web"
-            )}
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-[#222]">
-            <div className="text-[#999] text-xs font-bold uppercase mb-1">PACKAGE PRICE</div>
-            <div className="flex items-end justify-between mb-4">
-              <span className="text-white font-bold text-4xl">${signaturePrice.price}</span>
-              <span className="bg-[#c9a84c]/20 text-[#c9a84c] text-xs font-bold px-2 py-1 rounded">
-                You Save ${signaturePrice.savings}
-              </span>
-            </div>
-            <button 
-              onClick={() => onBook('Signature')}
-              className="block w-full bg-[#c9a84c] hover:bg-[#b09342] text-black font-bold text-center py-3 rounded-lg transition-colors"
-            >
-              BOOK NOW →
-            </button>
-          </div>
-        </div>
-
-        {/* CROWN */}
-        <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl p-8 flex flex-col relative">
-          <div className="absolute top-0 right-0 bg-[#c9a84c] text-black text-xs font-bold px-3 py-1 rounded-bl-lg border-l border-b border-[#c9a84c]">
-            30% OFF
-          </div>
-          <h3 className="text-[32px] font-bold text-white mb-1">Crown</h3>
-          <p className="text-[#c9a84c] italic text-sm mb-8">Gold Photos + Cinematic + Standard OR Branding OR Spotlight + 2 Twilight Exteriors + Website</p>
-          
-          <div className="flex-grow">
-            {renderDescription(
-              "Gold Photos — The Complete Visual Package", 
-              "Same description as Signature: Bronze photos + drone + 3D tour + floor plan.",
-              "crn_photos"
-            )}
-            {renderDescription(
-              "Regalis Cinematic — Premium Listing Film", 
-              "Same description as Signature.",
-              "crn_cine"
-            )}
-            
-            <div className="mb-5">
-              <div className="flex items-start gap-3">
-                <Check size={16} className="text-[#c9a84c] mt-1 shrink-0" />
-                <div className="w-full">
-                  <h4 className="text-white font-bold text-base mb-3">PLUS Choose One Additional Video:</h4>
-                  <div className="space-y-2">
-                    {[
-                      { id: 'standard', title: 'Option A: Regalis Standard', desc: 'Professional Listing Video' },
-                      { id: 'agentBranding', title: 'Option B: Agent Branding', desc: 'Your Personal Brand Film' },
-                      { id: 'communitySpotlight', title: 'Option C: Community Spotlight', desc: 'Neighborhood Highlight' }
-                    ].map(opt => (
-                      <div 
-                        key={opt.id}
-                        onClick={() => setCrownVideo(opt.id as any)}
-                        className={cn(
-                          "p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between",
-                          crownVideo === opt.id 
-                            ? "bg-[#c9a84c]/10 border-[#c9a84c]" 
-                            : "bg-[#111] border-[#222] hover:border-[#444]"
-                        )}
-                      >
-                        <div>
-                          <div className="text-sm font-bold text-white">{opt.title}</div>
-                          <div className="text-xs text-[#999]">{opt.desc}</div>
-                        </div>
-                        <div className={cn(
-                          "w-4 h-4 rounded-full border flex items-center justify-center",
-                          crownVideo === opt.id ? "border-[#c9a84c] bg-[#c9a84c]" : "border-[#444]"
-                        )}>
-                          {crownVideo === opt.id && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {renderDescription(
-              "2 Twilight Exterior Photos", 
-              "Included complimentary.",
-              "crn_twi"
-            )}
-            {renderDescription(
-              "Custom Listing Website", 
-              "Included FREE.",
-              "crn_web"
-            )}
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-[#222]">
-            <div className="text-[#999] text-xs font-bold uppercase mb-1">PACKAGE PRICE</div>
-            <div className="flex items-end justify-between mb-4">
-              <span className="text-white font-bold text-4xl">${crownPrice.price}</span>
-              <span className="bg-[#c9a84c]/20 text-[#c9a84c] text-xs font-bold px-2 py-1 rounded">
-                You Save ${crownPrice.savings}
-              </span>
-            </div>
-            <button 
-              onClick={() => onBook('Crown', crownVideo)}
-              className="block w-full bg-[#c9a84c] hover:bg-[#b09342] text-black font-bold text-center py-3 rounded-lg transition-colors"
-            >
-              BOOK NOW →
-            </button>
-          </div>
-        </div>
-
+    <div className="mb-16">
+      <div className="mb-8">
+        <h2 className="text-[32px] font-bold text-white mb-2">Package Presets</h2>
+        <p className="text-[#999] text-[18px]">
+          Select a base package to start. You can customize individual services below.
+        </p>
       </div>
 
-      {/* Comparison Table */}
-      <div className="bg-[#0a0a0a] border border-[#222] rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-[#222] flex flex-col md:flex-row justify-between items-center gap-4">
-          <h3 className="text-xl font-bold text-white">All Packages At A Glance</h3>
-          <div className="text-[#c9a84c] text-sm font-mono">
-            PRICE ({TIERS[tier].label.replace('sqft', 'SF')})
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="bg-[#111] text-[#999] uppercase text-xs">
-                <th className="p-4 font-bold">Service</th>
-                <th className="p-4 font-bold">Essential</th>
-                <th className="p-4 font-bold bg-[#c9a84c]/10 text-[#c9a84c]">Signature</th>
-                <th className="p-4 font-bold">Crown</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#222] text-[#D4D4D4]">
-              <tr>
-                <td className="p-4 font-medium">Interior & Exterior Photos</td>
-                <td className="p-4">Silver (Bronze + FP)</td>
-                <td className="p-4 bg-[#c9a84c]/5">Gold (Bronze + FP + Drone + 3D)</td>
-                <td className="p-4">Gold (Bronze + FP + Drone + 3D)</td>
-              </tr>
-              <tr>
-                <td className="p-4 font-medium">Floor Plan (2D Marketing)</td>
-                <td className="p-4 text-[#c9a84c]">✓ (Silver)</td>
-                <td className="p-4 bg-[#c9a84c]/5 text-[#c9a84c]">✓ (Gold)</td>
-                <td className="p-4 text-[#c9a84c]">✓ (Gold)</td>
-              </tr>
-              <tr>
-                <td className="p-4 font-medium">Drone Aerial Stills</td>
-                <td className="p-4 text-[#666]">—</td>
-                <td className="p-4 bg-[#c9a84c]/5 text-[#c9a84c]">✓ (Gold)</td>
-                <td className="p-4 text-[#c9a84c]">✓ (Gold)</td>
-              </tr>
-              <tr>
-                <td className="p-4 font-medium">3D Tour + Interactive Floor Plan</td>
-                <td className="p-4 text-[#666]">—</td>
-                <td className="p-4 bg-[#c9a84c]/5 text-[#c9a84c]">✓ (Gold)</td>
-                <td className="p-4 text-[#c9a84c]">✓ (Gold)</td>
-              </tr>
-              <tr>
-                <td className="p-4 font-medium">2 Twilight Exterior Photos</td>
-                <td className="p-4 text-[#666]">—</td>
-                <td className="p-4 bg-[#c9a84c]/5 text-[#c9a84c]">✓ Complimentary</td>
-                <td className="p-4 text-[#c9a84c]">✓ Complimentary</td>
-              </tr>
-              <tr>
-                <td className="p-4 font-medium">Quick Tour Video</td>
-                <td className="p-4 text-[#c9a84c]">✓</td>
-                <td className="p-4 bg-[#c9a84c]/5 text-[#666]">—</td>
-                <td className="p-4 text-[#666]">—</td>
-              </tr>
-              <tr>
-                <td className="p-4 font-medium">Regalis Cinematic</td>
-                <td className="p-4 text-[#666]">—</td>
-                <td className="p-4 bg-[#c9a84c]/5 text-[#c9a84c]">✓</td>
-                <td className="p-4 text-[#c9a84c]">✓</td>
-              </tr>
-              <tr>
-                <td className="p-4 font-medium">Standard, Branding, or Spotlight</td>
-                <td className="p-4 text-[#666]">—</td>
-                <td className="p-4 bg-[#c9a84c]/5 text-[#666]">—</td>
-                <td className="p-4 text-[#c9a84c]">✓ (Pick 1)</td>
-              </tr>
-              <tr>
-                <td className="p-4 font-medium">Drone in Video</td>
-                <td className="p-4">{market === 'NJ' ? 'Included FREE' : '$100 add-on'}</td>
-                <td className="p-4 bg-[#c9a84c]/5">{market === 'NJ' ? 'Included FREE' : '$100 add-on'}</td>
-                <td className="p-4">{market === 'NJ' ? 'Included FREE' : '$100 add-on'}</td>
-              </tr>
-              <tr>
-                <td className="p-4 font-medium">Custom Listing Website</td>
-                <td className="p-4 text-[#c9a84c]">✓ Included</td>
-                <td className="p-4 bg-[#c9a84c]/5 text-[#c9a84c]">✓ Included</td>
-                <td className="p-4 text-[#c9a84c]">✓ Included</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {cards.map(card => (
+          <button
+            key={card.id}
+            onClick={() => {
+              if (card.id === 'Crown') onSelect('Crown', crownVariant);
+              else onSelect(card.id);
+            }}
+            className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 text-left hover:border-[#c9a84c] transition-all relative group flex flex-col"
+          >
+            {/* Popular badge */}
+            {card.popular && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#c9a84c] text-black text-[11px] font-bold px-3 py-1 rounded-full shadow-lg whitespace-nowrap z-10">
+                ⭐ {card.label}
+              </div>
+            )}
+            {/* Discount badge */}
+            <div className="absolute top-0 right-0 bg-[#c9a84c] text-black text-[11px] font-bold px-2 py-1 rounded-bl-lg">
+              {card.badge}
+            </div>
+
+            <h3 className="text-[24px] font-bold text-white mb-1 group-hover:text-[#c9a84c] transition-colors">
+              {card.name}
+            </h3>
+            <p className="text-[#c9a84c] text-[13px] italic mb-4">{card.subtitle}</p>
+
+            {/* Crown variant selector — stop propagation so clicking tabs doesn't trigger onSelect */}
+            {card.id === 'Crown' && (
+              <div
+                className="flex gap-1 mb-4 flex-wrap"
+                onClick={e => e.stopPropagation()}
+              >
+                {crownVariants.map(v => (
+                  <button
+                    key={v.key}
+                    type="button"
+                    onClick={e => { e.stopPropagation(); setCrownVariant(v.key); }}
+                    className={cn(
+                      'px-2 py-1 rounded text-[11px] font-bold transition-all border',
+                      crownVariant === v.key
+                        ? 'bg-[#c9a84c] text-black border-[#c9a84c]'
+                        : 'bg-transparent text-[#999] border-[#333] hover:border-[#c9a84c] hover:text-[#c9a84c]'
+                    )}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Includes list */}
+            <div className="flex-grow mb-4">
+              <ul className="space-y-1">
+                {card.includes.map((item, i) => (
+                  <li key={i} className="text-[13px] text-[#999] flex items-start gap-1.5">
+                    <span className="text-[#c9a84c] mt-0.5">✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Pricing */}
+            <div className="mt-auto pt-4 border-t border-[#222]">
+              <div className="flex items-end justify-between mb-1">
+                <div>
+                  <div className="text-[#666] text-[13px] line-through decoration-1 mb-0.5">
+                    ${card.alacarte}
+                  </div>
+                  <div className="text-white font-bold text-[32px] leading-none">
+                    ${card.discounted}
+                  </div>
+                  <div className="text-[#c9a84c] text-[12px] font-medium mt-0.5">
+                    You save ${card.savings}
+                  </div>
+                </div>
+                <div className="text-[#c9a84c] font-bold text-[14px] group-hover:translate-x-1 transition-transform">
+                  Select →
+                </div>
+              </div>
+              {card.note && (
+                <div className="text-[#4CAF50] text-[11px] font-medium mt-2">{card.note}</div>
+              )}
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   );

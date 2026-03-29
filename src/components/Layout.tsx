@@ -8,7 +8,7 @@ export function Layout({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex flex-col font-sans text-[#D4D4D4] selection:bg-[#c9a84c]/30 bg-black">
       <Background />
       <Navbar />
-      <main className="flex-grow pt-[70px]">
+      <main className="flex-grow">
         {children}
       </main>
       <Footer />

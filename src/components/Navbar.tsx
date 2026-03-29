@@ -2,106 +2,86 @@ import { useEffect } from 'react';
 
 export function Navbar() {
   useEffect(() => {
-    /* ═══════════════════════════════════════════ */
-    /* MOBILE MENU TOGGLE                          */
-    /* ═══════════════════════════════════════════ */
-
+    // ===== REGALIS UNIVERSAL NAVBAR JS =====
     const hamburger = document.getElementById('navHamburger');
-    const mobileMenu = document.getElementById('mobileMenu');
+    const navLinks = document.getElementById('navLinks');
+    const overlay = document.getElementById('navOverlay');
 
-    if (!hamburger || !mobileMenu) return;
+    if (!hamburger || !navLinks || !overlay) return;
 
-    const toggleMenu = () => {
-      mobileMenu.classList.toggle('open');
+    function openMenu() {
+      hamburger!.classList.add('open');
+      navLinks!.classList.add('open');
+      overlay!.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
 
-      // Animate hamburger to X
-      const lines = hamburger.querySelectorAll('.hamburger-line');
-      if (mobileMenu.classList.contains('open')) {
-        (lines[0] as HTMLElement).style.transform = 'rotate(45deg) translate(5px, 5px)';
-        (lines[1] as HTMLElement).style.opacity = '0';
-        (lines[2] as HTMLElement).style.transform = 'rotate(-45deg) translate(5px, -5px)';
-        document.body.style.overflow = 'hidden'; // Prevent background scroll
+    function closeMenu() {
+      hamburger!.classList.remove('open');
+      navLinks!.classList.remove('open');
+      overlay!.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    const handleHamburgerClick = function() {
+      if (navLinks.classList.contains('open')) {
+        closeMenu();
       } else {
-        (lines[0] as HTMLElement).style.transform = 'none';
-        (lines[1] as HTMLElement).style.opacity = '1';
-        (lines[2] as HTMLElement).style.transform = 'none';
-        document.body.style.overflow = '';
+        openMenu();
       }
     };
 
-    hamburger.addEventListener('click', toggleMenu);
+    hamburger.addEventListener('click', handleHamburgerClick);
+    overlay.addEventListener('click', closeMenu);
 
-    // Close mobile menu when a link is clicked
-    const links = mobileMenu.querySelectorAll('.mobile-link');
-    const closeMenu = () => {
-      mobileMenu.classList.remove('open');
-      const lines = hamburger.querySelectorAll('.hamburger-line');
-      (lines[0] as HTMLElement).style.transform = 'none';
-      (lines[1] as HTMLElement).style.opacity = '1';
-      (lines[2] as HTMLElement).style.transform = 'none';
-      document.body.style.overflow = '';
-    };
-
-    links.forEach(link => {
+    // Close menu when a link is clicked
+    const links = navLinks.querySelectorAll('.nav-link');
+    links.forEach(function(link) {
       link.addEventListener('click', closeMenu);
     });
 
-    // Close mobile menu when clicking outside
-    const clickOutside = (e: MouseEvent) => {
-      if (!mobileMenu.contains(e.target as Node) && !hamburger.contains(e.target as Node) && mobileMenu.classList.contains('open')) {
-        closeMenu();
-      }
-    };
+    // Set active page — CHANGE THE VALUE BELOW FOR EACH APP
+    const activeLink = document.querySelector('.nav-link[data-page="calculator"]');
+    if (activeLink) {
+      activeLink.classList.add('active');
+    }
 
-    document.addEventListener('click', clickOutside);
-
-    // Cleanup
     return () => {
-      hamburger.removeEventListener('click', toggleMenu);
-      links.forEach(link => link.removeEventListener('click', closeMenu));
-      document.removeEventListener('click', clickOutside);
+      hamburger.removeEventListener('click', handleHamburgerClick);
+      overlay.removeEventListener('click', closeMenu);
+      links.forEach(function(link) {
+        link.removeEventListener('click', closeMenu);
+      });
     };
+    // ===== END NAVBAR JS =====
   }, []);
 
   return (
-    <nav className="navbar">
-      <div className="nav-inner">
-        {/* Logo — links to main website */}
-        <a href="https://www.regalisrealtymedia.com" className="nav-logo">
-          <img src="https://cdn.prod.website-files.com/6695980889d8d99cedb29bc7/677588ce72f981235e0deeb9_Regalis%20Realty%20Logo%20Symbol.png" alt="Regalis Realty Media" className="nav-logo-img" />
-        </a>
-
-        {/* Desktop Navigation Links */}
-        <div className="nav-links" id="navLinks">
-          <a href="https://www.regalisrealtymedia.com" className="nav-link">Home</a>
-          <a href="https://regalisrealtymedia25.pixieset.com/regalisrealtymediaportfolio/compassphotos/" className="nav-link" target="_blank">Portfolio</a>
-          <a href="https://pricing.regalisrealtymedia.com" className="nav-link" id="nav-pricing">Pricing</a>
-          <a href="https://calculator.regalisrealtymedia.com" className="nav-link active" id="nav-calculator">Calculator</a>
-          <a href="https://catalog.regalisrealtymedia.com" className="nav-link" id="nav-catalog">Catalog</a>
-          <a href="https://branding.regalisrealtymedia.com" className="nav-link" id="nav-branding">Branding</a>
-          <a href="https://portalguide.regalisrealtymedia.com" className="nav-link" id="nav-portal">Portal</a>
-          <a href="https://www.regalisrealtymedia.com/calendar" className="nav-link">Contact</a>
+    <>
+      <nav className="regalis-nav" id="regalisNav">
+        <div className="nav-inner">
+          <a href="https://www.regalisrealtymedia.com" className="nav-logo">
+            <img src="https://cdn.prod.website-files.com/6695980889d8d99cedb29bc7/66c7f601fff376e4c95274b3_Regalis%20Realty%20Main%20Logo%20(1).png" alt="Regalis Realty Media" className="nav-logo-img" />
+          </a>
+          <div className="nav-links" id="navLinks">
+            <a href="https://www.regalisrealtymedia.com" className="nav-link" data-page="home">Home</a>
+            <a href="https://regalisrealtymedia25.pixieset.com/regalisrealtymediaportfolio/compassphotos/" className="nav-link" data-page="portfolio" target="_blank" rel="noreferrer">Portfolio</a>
+            <a href="https://pricing.regalisrealtymedia.com" className="nav-link" data-page="pricing">Pricing</a>
+            <a href="https://calculator.regalisrealtymedia.com" className="nav-link" data-page="calculator">Calculator</a>
+            <a href="https://catalog.regalisrealtymedia.com" className="nav-link" data-page="catalog">Catalog</a>
+            <a href="https://branding.regalisrealtymedia.com" className="nav-link" data-page="branding">Branding</a>
+            <a href="https://portal.regalisrealtymedia.com" className="nav-link" data-page="portal">Portal</a>
+            <a href="https://contactus.regalisrealtymedia.com" className="nav-link" data-page="contact">Contact</a>
+            <a href="https://prep.regalisrealtymedia.com" className="nav-link" data-page="checklist">Listing Checklist</a>
+          </div>
+          <button className="nav-hamburger" id="navHamburger" aria-label="Toggle menu">
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
+          </button>
         </div>
-
-        {/* Mobile Hamburger Button */}
-        <button className="nav-hamburger" id="navHamburger" aria-label="Toggle navigation menu">
-          <span className="hamburger-line"></span>
-          <span className="hamburger-line"></span>
-          <span className="hamburger-line"></span>
-        </button>
-      </div>
-
-      {/* Mobile Menu Overlay */}
-      <div className="mobile-menu" id="mobileMenu">
-        <a href="https://www.regalisrealtymedia.com" className="mobile-link">Home</a>
-        <a href="https://regalisrealtymedia25.pixieset.com/regalisrealtymediaportfolio/compassphotos/" className="mobile-link" target="_blank">Portfolio</a>
-        <a href="https://pricing.regalisrealtymedia.com" className="mobile-link" id="mobile-nav-pricing">Pricing</a>
-        <a href="https://calculator.regalisrealtymedia.com" className="mobile-link active" id="mobile-nav-calculator">Calculator</a>
-        <a href="https://catalog.regalisrealtymedia.com" className="mobile-link" id="mobile-nav-catalog">Catalog</a>
-        <a href="https://branding.regalisrealtymedia.com" className="mobile-link" id="mobile-nav-branding">Branding</a>
-        <a href="https://portalguide.regalisrealtymedia.com" className="mobile-link" id="mobile-nav-portal">Portal</a>
-        <a href="https://www.regalisrealtymedia.com/calendar" className="mobile-link">Contact</a>
-      </div>
-    </nav>
+      </nav>
+      <div className="nav-overlay" id="navOverlay"></div>
+    </>
   );
 }
