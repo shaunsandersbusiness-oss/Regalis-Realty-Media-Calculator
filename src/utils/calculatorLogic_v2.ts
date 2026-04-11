@@ -59,14 +59,18 @@ export function calculateQuote(state: CalculatorState): QuoteResult {
   if (selectedServices.has('droneStandalone'))
     addItem('droneStandalone', 'Drone Standalone', getPrice('droneStandalone'));
 
-  if (selectedServices.has('standard'))
-    addItem('standard', 'Regalis Standard', getPrice('standard'));
-  if (selectedServices.has('cinematic'))
-    addItem('cinematic', 'Regalis Cinematic', getPrice('cinematic'));
-  if (selectedServices.has('agentBranding'))
-    addItem('agentBranding', 'Agent Branding Video', getPrice('agentBranding'));
-  if (selectedServices.has('communitySpotlight'))
-    addItem('communitySpotlight', 'Community Spotlight', getPrice('communitySpotlight'));
+  if (selectedServices.has('editorCut'))
+    addItem('editorCut', 'Editor Cut Video', getPrice('editorCut'));
+  if (selectedServices.has('signatureVideo'))
+    addItem('signatureVideo', 'Signature Video', getPrice('signatureVideo'));
+  if (selectedServices.has('agentBrandingEditor'))
+    addItem('agentBrandingEditor', 'Agent Branding — Editor Cut', getPrice('agentBrandingEditor'));
+  if (selectedServices.has('agentBrandingSignature'))
+    addItem('agentBrandingSignature', 'Agent Branding — Signature', getPrice('agentBrandingSignature'));
+  if (selectedServices.has('communitySpotlightEditor'))
+    addItem('communitySpotlightEditor', 'Community Spotlight — Editor Cut', getPrice('communitySpotlightEditor'));
+  if (selectedServices.has('communitySpotlightSignature'))
+    addItem('communitySpotlightSignature', 'Community Spotlight — Signature', getPrice('communitySpotlightSignature'));
   if (selectedServices.has('droneInVideo') && market === 'Manhattan')
     addItem('droneInVideo', 'Drone Footage in Video', getPrice('droneInVideo'));
 
@@ -89,8 +93,9 @@ export function calculateQuote(state: CalculatorState): QuoteResult {
   if (selectedServices.has('sameDayDelivery'))
     addItem('sameDayDelivery', 'Same-Day Edited Delivery', getPrice('sameDayDelivery'));
   if (selectedServices.has('nextDayVideoDelivery')) {
-    const hasVideo = selectedServices.has('standard') || selectedServices.has('cinematic') ||
-                     selectedServices.has('agentBranding') || selectedServices.has('communitySpotlight');
+    const hasVideo = selectedServices.has('editorCut') || selectedServices.has('signatureVideo') ||
+                     selectedServices.has('agentBrandingEditor') || selectedServices.has('agentBrandingSignature') ||
+                     selectedServices.has('communitySpotlightEditor') || selectedServices.has('communitySpotlightSignature');
     if (hasVideo) addItem('nextDayVideoDelivery', 'Next-Day Video Delivery', getPrice('nextDayVideoDelivery'));
   }
 
@@ -105,35 +110,31 @@ export function calculateQuote(state: CalculatorState): QuoteResult {
   const hasFP           = selectedServices.has('floorPlan');
   const has3D           = selectedServices.has('threeDTour');
   const hasDronePhoto   = selectedServices.has('dronePhotoAddon');
-  const hasCinematic    = selectedServices.has('cinematic');
-  const hasStandard     = selectedServices.has('standard');
-  const hasAgentBranding = selectedServices.has('agentBranding');
-  const hasSpotlight    = selectedServices.has('communitySpotlight');
+  
+  const hasEditor  = selectedServices.has('editorCut');
+  const hasSig     = selectedServices.has('signatureVideo');
+  const hasAgentBrandEditor  = selectedServices.has('agentBrandingEditor');
+  const hasAgentBrandSig     = selectedServices.has('agentBrandingSignature');
+  const hasSpotEditor        = selectedServices.has('communitySpotlightEditor');
+  const hasSpotSig           = selectedServices.has('communitySpotlightSignature');
 
-  // FIX 1: Only FP, 3D Tour, Drone Photo count as photo add-ons for discount
+  const isGold           = hasBronze && hasFP && has3D && hasDronePhoto;
   const hasAnyPhotoAddon = hasFP || has3D || hasDronePhoto;
-
-  const hasAnyVideo = hasStandard || hasCinematic || hasAgentBranding || hasSpotlight;
-
-  // FIX 2: Crown requires Gold (B+FP+3D+Drone) + Cinematic + a 2nd video
-  const isGold = hasBronze && hasFP && has3D && hasDronePhoto;
-  const hasSecondVideo = hasStandard || hasAgentBranding || hasSpotlight; // 2nd video alongside cinematic
+  const hasPremiumVideo  = hasSig || hasAgentBrandSig || hasSpotSig;
+  const hasAnyVideo      = hasEditor || hasSig || hasAgentBrandEditor || hasAgentBrandSig || hasSpotEditor || hasSpotSig;
 
   let discountName: string | null = null;
   let discountPercent = 0;
 
   // Check highest tier first — first match wins
-  if (isGold && hasCinematic && hasSecondVideo) {
-    discountName = 'Crown — 20% Off';
+  if (isGold && hasPremiumVideo) {
+    discountName = 'Legacy — 20% off entire order';
     discountPercent = 0.20;
-  } else if (isGold && hasAnyVideo) {
-    discountName = 'Gold + Video — 15% Off';
-    discountPercent = 0.15;
   } else if (hasBronze && hasAnyVideo) {
-    discountName = 'Photo + Video — 15% Off';
+    discountName = 'Prestige — 15% off entire order';
     discountPercent = 0.15;
-  } else if (hasBronze && hasAnyPhotoAddon) {
-    discountName = 'Photo Bundle — 10% Off';
+  } else if (hasBronze && hasAnyPhotoAddon && !hasAnyVideo) {
+    discountName = 'Photo Bundle — 10% off entire order';
     discountPercent = 0.10;
   }
 

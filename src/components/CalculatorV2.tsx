@@ -4,8 +4,8 @@ import { Check, Minus, Plus, ChevronDown, Download, Phone, X, ChevronUp, Calcula
 import { cn } from '../lib/utils';
 import { 
   NJ_PRICES, MANHATTAN_PRICES, TIERS, SERVICES_LIST, Market, Tier,
-  ESSENTIAL_PRICES, GOLD_BUNDLE_PRICES, SIGNATURE_PRICES,
-  CROWN_STANDARD_PRICES, CROWN_BRANDING_PRICES, CROWN_SPOTLIGHT_PRICES,
+  ESSENTIAL_PRICES, GOLD_BUNDLE_PRICES, PRESTIGE_PRICES, PRESTIGE_ALC_PRICES,
+  LEGACY_PRICES, LEGACY_ALC_PRICES,
   SILVER_RAW, GOLD_RAW
 } from '../data/pricing_v2';
 import { calculateQuote, CalculatorState } from '../utils/calculatorLogic_v2';
@@ -86,17 +86,12 @@ export function CalculatorV2() {
     }
   };
 
-  const selectPackage = (pkg: string, crownVariant?: 'standard' | 'agentBranding' | 'communitySpotlight') => {
+  const selectPackage = (pkg: string) => {
     let newServices = new Set<string>();
 
     switch (pkg) {
       case 'Bronze':
         newServices.add('bronze');
-        newServices.add('listingWebsite');
-        break;
-      case 'Essential':
-        newServices.add('bronze');
-        newServices.add('floorPlan');
         newServices.add('listingWebsite');
         break;
       case 'Gold':
@@ -106,24 +101,21 @@ export function CalculatorV2() {
         newServices.add('dronePhotoAddon');
         newServices.add('listingWebsite');
         break;
-      case 'Signature':
+      case 'Prestige':
         newServices.add('bronze');
         newServices.add('floorPlan');
         newServices.add('threeDTour');
         newServices.add('dronePhotoAddon');
-        newServices.add('standard');
+        newServices.add('editorCut');
         newServices.add('listingWebsite');
         break;
-      case 'Crown':
+      case 'Legacy':
         newServices.add('bronze');
         newServices.add('floorPlan');
         newServices.add('threeDTour');
         newServices.add('dronePhotoAddon');
-        newServices.add('cinematic');
+        newServices.add('signatureVideo');
         newServices.add('listingWebsite');
-        // Add selected 2nd video variant
-        const variant = crownVariant ?? 'agentBranding';
-        newServices.add(variant);
         break;
     }
 
@@ -601,42 +593,18 @@ function PackageCards({
 }: {
   market: Market;
   tier: Tier;
-  onSelect: (pkg: string, crownVariant?: 'standard' | 'agentBranding' | 'communitySpotlight') => void;
+  onSelect: (pkg: string) => void;
 }) {
-  // Crown variant state — lives inside PackageCards
-  const [crownVariant, setCrownVariant] = useState<'standard' | 'agentBranding' | 'communitySpotlight'>('agentBranding');
-
   if (tier === 5) return null; // Contact Us tier — parent handles this
 
-  // ── Read from pre-verified arrays — never recalculate ──
-  const essentialDiscounted = ESSENTIAL_PRICES[market][tier];
-  const essentialAlacarte   = SILVER_RAW[market][tier];
-
-  const signatureDiscounted = SIGNATURE_PRICES[market][tier];
-  // Signature à la carte: Gold raw + Standard video
   const PRICES = market === 'NJ' ? NJ_PRICES : MANHATTAN_PRICES;
-  const stdPrice = Array.isArray(PRICES.standard) ? PRICES.standard[tier] : 0;
-  const signatureAlacarte = GOLD_RAW[market][tier] + stdPrice;
 
-  const crownDiscounted = crownVariant === 'standard'
-    ? CROWN_STANDARD_PRICES[market][tier]
-    : crownVariant === 'agentBranding'
-    ? CROWN_BRANDING_PRICES[market][tier]
-    : CROWN_SPOTLIGHT_PRICES[market][tier];
+  // ── Read from pre-verified arrays — never recalculate ──
+  const prestigeDiscounted = PRESTIGE_PRICES[market][tier];
+  const prestigeAlacarte   = PRESTIGE_ALC_PRICES[market][tier];
 
-  const cinePrice = Array.isArray(PRICES.cinematic) ? PRICES.cinematic[tier] : 0;
-  const crownSecondPrice = crownVariant === 'standard'
-    ? stdPrice
-    : crownVariant === 'agentBranding'
-    ? PRICES.agentBranding
-    : PRICES.communitySpotlight;
-  const crownAlacarte = GOLD_RAW[market][tier] + cinePrice + crownSecondPrice;
-
-  const crownVariants = [
-    { key: 'standard'          as const, label: '+ Standard Video' },
-    { key: 'agentBranding'     as const, label: '+ Agent Branding' },
-    { key: 'communitySpotlight' as const, label: '+ Community Spotlight' },
-  ];
+  const legacyDiscounted = LEGACY_PRICES[market][tier];
+  const legacyAlacarte   = LEGACY_ALC_PRICES[market][tier];
 
   const cards = [
     {
@@ -653,15 +621,15 @@ function PackageCards({
       note: '+ Listing Website FREE',
     },
     {
-      id: 'Essential',
+      id: 'Silver',
       name: 'Silver / Essential',
       subtitle: 'Photos + Floor Plan',
       badge: '10% Off',
       popular: true,
       label: 'MOST POPULAR',
-      discounted: essentialDiscounted,
-      alacarte: essentialAlacarte,
-      savings: (essentialAlacarte as number) - (essentialDiscounted as number),
+      discounted: ESSENTIAL_PRICES[market][tier],
+      alacarte: SILVER_RAW[market][tier],
+      savings: (SILVER_RAW[market][tier] as number) - (ESSENTIAL_PRICES[market][tier] as number),
       includes: ['Bronze Photos', 'Floor Plan', 'Custom Listing Website (FREE)'],
       note: '+ Listing Website FREE',
     },
@@ -679,33 +647,31 @@ function PackageCards({
       note: '+ Listing Website FREE',
     },
     {
-      id: 'Signature',
-      name: 'Signature',
-      subtitle: 'Gold + Standard Video',
+      id: 'Prestige',
+      name: 'Prestige',
+      subtitle: 'Gold + Editor Cut Video',
       badge: '15% Off',
       popular: false,
       label: 'BEST VALUE',
-      discounted: signatureDiscounted,
-      alacarte: signatureAlacarte,
-      savings: signatureAlacarte - (signatureDiscounted as number),
-      includes: ['Bronze Photos', 'Floor Plan', '3D Tour', 'Drone Photo', 'Regalis Standard Video', 'Listing Website (FREE)'],
+      discounted: prestigeDiscounted,
+      alacarte: prestigeAlacarte,
+      savings: (prestigeAlacarte as number) - (prestigeDiscounted as number),
+      includes: ['Bronze Photos', 'Floor Plan', '3D Tour', 'Drone Photo', 'Editor Cut Video', 'Listing Website (FREE)'],
       note: '+ Listing Website FREE',
     },
     {
-      id: 'Crown',
-      name: 'Crown',
-      subtitle: 'Gold + Cinematic + 2nd Video',
+      id: 'Legacy',
+      name: 'Legacy',
+      subtitle: 'Gold + Signature Video',
       badge: '20% Off',
       popular: false,
       label: 'MAXIMUM IMPACT',
-      discounted: crownDiscounted,
-      alacarte: crownAlacarte,
-      savings: crownAlacarte - (crownDiscounted as number),
+      discounted: legacyDiscounted,
+      alacarte: legacyAlacarte,
+      savings: (legacyAlacarte as number) - (legacyDiscounted as number),
       includes: [
         'Bronze Photos', 'Floor Plan', '3D Tour', 'Drone Photo',
-        'Regalis Cinematic',
-        crownVariant === 'standard' ? 'Regalis Standard Video' :
-        crownVariant === 'agentBranding' ? 'Agent Branding Video' : 'Community Spotlight',
+        'Signature Video',
         'Listing Website (FREE)',
       ],
       note: '+ Listing Website FREE + 2 Twilight Photos FREE',
@@ -715,10 +681,7 @@ function PackageCards({
   const renderCard = (card: any) => (
     <button
       key={card.id}
-      onClick={() => {
-        if (card.id === 'Crown') onSelect('Crown', crownVariant);
-        else onSelect(card.id);
-      }}
+      onClick={() => onSelect(card.id)}
       className="bg-[#0a0a0a] border border-[#222] rounded-xl p-6 text-left hover:border-[#c9a84c] transition-all relative group flex flex-col"
     >
       {/* Popular badge */}
@@ -736,30 +699,6 @@ function PackageCards({
         {card.name}
       </h3>
       <p className="text-[#c9a84c] text-[13px] italic mb-4">{card.subtitle}</p>
-
-      {/* Crown variant selector — stop propagation so clicking tabs doesn't trigger onSelect */}
-      {card.id === 'Crown' && (
-        <div
-          className="flex gap-1 mb-4 flex-wrap"
-          onClick={e => e.stopPropagation()}
-        >
-          {crownVariants.map(v => (
-            <button
-              key={v.key}
-              type="button"
-              onClick={e => { e.stopPropagation(); setCrownVariant(v.key); }}
-              className={cn(
-                'px-2 py-1 rounded text-[11px] font-bold transition-all border',
-                crownVariant === v.key
-                  ? 'bg-[#c9a84c] text-black border-[#c9a84c]'
-                  : 'bg-transparent text-[#999] border-[#333] hover:border-[#c9a84c] hover:text-[#c9a84c]'
-              )}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* Includes list */}
       <div className="flex-grow mb-4">
@@ -810,14 +749,14 @@ function PackageCards({
       <div className="mb-10">
         <h3 className="text-[20px] font-bold text-white mb-4 border-b border-[#333] pb-2">Photo Packages</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {cards.filter(c => ['Bronze', 'Essential', 'Gold'].includes(c.id)).map(renderCard)}
+          {cards.filter(c => ['Bronze', 'Silver', 'Gold'].includes(c.id)).map(renderCard)}
         </div>
       </div>
 
       <div>
         <h3 className="text-[20px] font-bold text-white mb-4 border-b border-[#333] pb-2">Photo & Video Packages</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cards.filter(c => ['Signature', 'Crown'].includes(c.id)).map(renderCard)}
+          {cards.filter(c => ['Prestige', 'Legacy'].includes(c.id)).map(renderCard)}
         </div>
       </div>
     </div>
