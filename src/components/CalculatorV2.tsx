@@ -307,8 +307,8 @@ export function CalculatorV2() {
                       {SERVICES_LIST.filter(s => {
                         if (s.category !== 'addon') return false;
                         if (s.id === 'nextDayVideoDelivery') {
-                          const hasVideo = state.selectedServices.has('standard') || 
-                                           state.selectedServices.has('cinematic') || 
+                          const hasVideo = state.selectedServices.has('editorCut') || 
+                                           state.selectedServices.has('signatureVideo') || 
                                            state.selectedServices.has('agentBranding') || 
                                            state.selectedServices.has('communitySpotlight');
                           if (!hasVideo) return false;

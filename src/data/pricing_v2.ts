@@ -23,15 +23,13 @@ export const NJ_PRICES = {
   dronePhotoAddon:  75,
   droneStandalone: 150,
 
-  // VIDEO — Listing Videos (tiered)
-  editorCut:  [450, 490, 535, 585, 650, 0],
-  signatureVideo: [750, 800, 875, 950, 1050, 0],
+  // VIDEO — Listing Videos (flat)
+  editorCut:  450,
+  signatureVideo: 750,
 
   // VIDEO — Brand & Community (flat)
-  agentBrandingEditor:         600,
-  agentBrandingSignature:      950,
-  communitySpotlightEditor:    550,
-  communitySpotlightSignature: 850,
+  agentBranding:      600,
+  communitySpotlight: 600,
 
   // VIDEO — Drone in video: included FREE in NJ
   droneInVideo: 0,
@@ -59,15 +57,13 @@ export const MANHATTAN_PRICES = {
   dronePhotoAddon:  100,
   droneStandalone:  250,
 
-  // VIDEO — Listing Videos (+$75 Manhattan fee baked in)
-  editorCut:  [525, 565, 610, 660, 725, 0],
-  signatureVideo: [825, 875, 950, 1025, 1125, 0],
+  // VIDEO — Listing Videos (+$75 Manhattan fee baked in) (flat)
+  editorCut:  525,
+  signatureVideo: 825,
 
   // VIDEO — Brand & Community (+$75 baked in)
-  agentBrandingEditor:         675,
-  agentBrandingSignature:      1025,
-  communitySpotlightEditor:    625,
-  communitySpotlightSignature: 925,
+  agentBranding:      675,
+  communitySpotlight: 675,
 
   // VIDEO — Drone in video: $100 add-on in Manhattan
   droneInVideo: 100,
@@ -110,26 +106,26 @@ export const GOLD_BUNDLE_PRICES: Record<Market, number[]> = {
   Manhattan:  [555, 595, 685, 800,  950, 0],
 };
 
-// Prestige = (Gold + Editor Cut) × 0.85 (15% off)
+// Prestige = Gold (sqft-based) + Editor Cut ($450 NJ / $525 MAN flat), 15% off
 export const PRESTIGE_PRICES: Record<Market, number[]> = {
-  NJ:         [820,  895,  1015, 1170, 1365, 0],
-  Manhattan:  [970,  1040, 1165, 1320, 1515, 0],
+  NJ:         [820,  860,  945,  1055, 1195, 0],
+  Manhattan:  [970,  1005, 1090, 1205, 1345, 0],
 };
 
 export const PRESTIGE_ALC_PRICES: Record<Market, number[]> = {
-  NJ:         [965,  1050, 1195, 1375, 1605, 0],
-  Manhattan:  [1140, 1225, 1370, 1550, 1780, 0],
+  NJ:         [965,  1010, 1110, 1240, 1405, 0],
+  Manhattan:  [1140, 1185, 1285, 1415, 1580, 0],
 };
 
-// Legacy = (Gold + Signature Video) × 0.80 (20% off)
+// Legacy = Gold (sqft-based) + Signature ($750 NJ / $825 MAN flat), 20% off
 export const LEGACY_PRICES: Record<Market, number[]> = {
-  NJ:         [1010, 1090, 1230, 1390, 1605, 0],
-  Manhattan:  [1150, 1230, 1370, 1530, 1745, 0],
+  NJ:         [1010, 1050, 1130, 1230, 1365, 0],
+  Manhattan:  [1150, 1190, 1270, 1370, 1505, 0],
 };
 
 export const LEGACY_ALC_PRICES: Record<Market, number[]> = {
-  NJ:         [1265, 1360, 1535, 1740, 2005, 0],
-  Manhattan:  [1440, 1535, 1710, 1915, 2180, 0],
+  NJ:         [1265, 1310, 1410, 1540, 1705, 0],
+  Manhattan:  [1440, 1485, 1585, 1715, 1880, 0],
 };
 
 export interface ServiceDef {
@@ -153,12 +149,10 @@ export const SERVICES_LIST: ServiceDef[] = [
   { id: 'droneStandalone',name: 'Drone Standalone',          description: 'Aerial photography without a photo package.',                                                    category: 'photo',  type: 'flat',     priceKey: 'droneStandalone' },
 
   // Video
-  { id: 'editorCut',          name: 'Editor Cut Video — Professional Listing Video',          description: 'Professional listing video with music, transitions & branded intro/outro. Drone included in NJ.', category: 'video', type: 'tiered', priceKey: 'editorCut' },
-  { id: 'signatureVideo',         name: 'Signature Video — Premium Listing Film ⚑ Consultation Required',         description: 'Premium cinematic listing film — advanced camera work, color grading, storytelling. Drone included in NJ.', category: 'video', type: 'tiered', priceKey: 'signatureVideo' },
-  { id: 'agentBrandingEditor',     name: 'Agent Branding — Editor Cut Level',      description: 'Personal brand video for agent marketing.',                                                    category: 'video',  type: 'flat',     priceKey: 'agentBrandingEditor' },
-  { id: 'agentBrandingSignature',     name: 'Agent Branding — Signature Level ⚑ Consultation Required',      description: 'Personal brand video for agent marketing.',                                                    category: 'video',  type: 'flat',     priceKey: 'agentBrandingSignature' },
-  { id: 'communitySpotlightEditor',name: 'Community Spotlight — Editor Cut Level',       description: 'Neighborhood/community highlight video.',                                                      category: 'video',  type: 'flat',     priceKey: 'communitySpotlightEditor' },
-  { id: 'communitySpotlightSignature',name: 'Community Spotlight — Signature Level ⚑ Consultation Required',       description: 'Neighborhood/community highlight video.',                                                      category: 'video',  type: 'flat',     priceKey: 'communitySpotlightSignature' },
+  { id: 'editorCut',          name: 'Editor Cut Video — Professional Listing Video',          description: 'Professional listing video with music, transitions & branded intro/outro. Drone included in NJ.', category: 'video', type: 'flat', priceKey: 'editorCut' },
+  { id: 'signatureVideo',         name: 'Signature Video — Premium Listing Film ⚑ Consultation Required',         description: 'Premium cinematic listing film — advanced camera work, color grading, storytelling. Drone included in NJ.', category: 'video', type: 'flat', priceKey: 'signatureVideo' },
+  { id: 'agentBranding',      name: 'Agent Branding Video — ⚑ Consultation Required',      description: 'Personal brand video for agent marketing.',                                                    category: 'video',  type: 'flat',     priceKey: 'agentBranding' },
+  { id: 'communitySpotlight', name: 'Community Spotlight — ⚑ Consultation Required',       description: 'Neighborhood/community highlight video.',                                                      category: 'video',  type: 'flat',     priceKey: 'communitySpotlight' },
   { id: 'droneInVideo',      name: 'Drone Footage in Video',    description: 'Add aerial footage to your video. Included FREE in NJ — Manhattan add-on only.',              category: 'video',  type: 'flat',     priceKey: 'droneInVideo', manhattanOnly: true },
 
   // Add-ons
